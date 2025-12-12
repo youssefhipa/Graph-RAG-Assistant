@@ -24,6 +24,9 @@ class RetrievalResult:
 
 
 class Pipeline:
+    # Intents that should always run baseline Cypher even if user selects embeddings-only.
+    BASELINE_REQUIRED_INTENTS = {"seller_count"}
+
     def __init__(self):
         self.settings = get_settings()
         self.intent = IntentClassifier()
@@ -48,7 +51,11 @@ class Pipeline:
 
         client = KGClient(self.settings)
         try:
-            if query and retrieval in ("baseline", "hybrid"):
+            baseline_needed = query and (
+                retrieval in ("baseline", "hybrid")
+                or intent_result.intent in self.BASELINE_REQUIRED_INTENTS
+            )
+            if baseline_needed:
                 baseline_rows = client.run_query(query["text"], query.get("params"))
             if retrieval in ("embeddings", "hybrid"):
                 embed_rows = self.embeddings.semantic_search(client, query=question, top_k=8)

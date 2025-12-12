@@ -4,7 +4,7 @@ import os
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional
 
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI

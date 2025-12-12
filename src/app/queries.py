@@ -9,6 +9,10 @@ Query = Dict[str, Any]
 
 
 QUERY_LIBRARY: Dict[str, str] = {
+    "seller_count": """
+    MATCH (s:Seller)
+    RETURN count(s) AS seller_count
+    """,
     "product_search": """
     MATCH (p:Product)-[:BELONGS_TO]->(c:Category)
     OPTIONAL MATCH (p)<-[:SELLS]-(s:Seller)
