@@ -101,5 +101,7 @@ def run_llm(
 ) -> str:
     prompt = build_prompt(context=context, persona=persona, task=task, question=question)
     chain = prompt | model
-    result: AIMessage = chain.invoke({})
+    result: AIMessage = chain.invoke(
+        {"context": context, "persona": persona, "task": task, "question": question}
+    )
     return result.content

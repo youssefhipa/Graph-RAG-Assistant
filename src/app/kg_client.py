@@ -33,11 +33,11 @@ class KGClient:
         CALL db.index.vector.queryNodes(
             '{self.settings.vector_index}',
             $top_k,
-            $query
+            $vector
         ) YIELD node, score
         RETURN node{{.*, `{self.settings.embed_property}`: null}} AS item, score
         ORDER BY score DESC
         """
         with self.driver.session(database=self.settings.neo4j_database) as session:
-            result = session.run(cypher, query=vector, top_k=top_k)
+            result = session.run(cypher, vector=vector, top_k=top_k)
             return [record.data() for record in result]

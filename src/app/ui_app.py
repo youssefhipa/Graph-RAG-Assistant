@@ -64,10 +64,10 @@ if run and question:
             }
         )
         st.subheader("Baseline Rows")
-        st.json(result.baseline_rows or "None")
+        st.json(result.baseline_rows or [])
     with col2:
         st.subheader("Embedding Hits")
-        st.json(result.embed_rows or "None")
+        st.json(result.embed_rows or [])
         st.subheader("Answer")
         st.write(result.answer)
 
