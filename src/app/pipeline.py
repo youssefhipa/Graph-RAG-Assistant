@@ -35,9 +35,9 @@ class Pipeline:
         self,
         question: str,
         retrieval: str = "hybrid",
-        model_key: str | None = None,
-        persona: str | None = None,
-        task: str | None = None,
+        model_key: Optional[str] = None,
+        persona: Optional[str] = None,
+        task: Optional[str] = None,
     ) -> RetrievalResult:
         intent_result = self.intent.predict(question)
         entities = self.entities.parse(question)
