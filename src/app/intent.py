@@ -14,6 +14,7 @@ INTENTS = [
     "category_insight",
     "recommendation",
     "customer_behavior",
+    "seller_count",
     "faq",
     "unknown",
 ]
@@ -33,12 +34,38 @@ class IntentClassifier:
     """
 
     KEYWORDS = {
-        "product_search": ["find", "show", "products", "search", "category", "price"],
+        "product_search": [
+            "find",
+            "show",
+            "products",
+            "search",
+            "category",
+            "electronics",
+            "perfumes",
+            "fashion",
+            "beauty",
+            "furniture",
+            "sports",
+            "toys",
+            "price",
+            "best",
+            "top",
+            "recommend",
+            "rating",
+        ],
+        "seller_count": ["seller", "sellers", "how many sellers", "count sellers", "number of sellers"],
         "delivery_delay": ["delay", "late", "shipping", "delivery", "on time", "sla"],
         "review_sentiment": ["review", "rating", "feedback", "sentiment", "score"],
         "seller_performance": ["seller", "performance", "reliability", "fulfillment"],
         "state_trend": ["state", "city", "region", "trend", "geo", "location"],
-        "category_insight": ["category", "perfume", "electronics", "fashion", "insight"],
+        "category_insight": [
+            "category",
+            "categories",
+            "category insight",
+            "popular category",
+            "top categories",
+            "trending",
+        ],
         "recommendation": ["recommend", "suggest", "best for me", "which", "choose"],
         "customer_behavior": ["repeat", "customer", "buyer", "behavior", "churn", "loyal"],
         "faq": ["what is", "how to", "when", "policy", "faq"],
@@ -51,7 +78,7 @@ class IntentClassifier:
         matched_keywords: List[str] = []
 
         for intent, keywords in self.KEYWORDS.items():
-            hits = [kw for kw in keywords if re.search(rf"\\b{re.escape(kw)}\\b", lowered)]
+            hits = [kw for kw in keywords if re.search(rf"\b{re.escape(kw)}\b", lowered)]
             score = len(hits) / max(len(keywords), 1)
             if score > best_score:
                 best_intent = intent

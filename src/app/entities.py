@@ -38,6 +38,7 @@ STATES = [
 COMMON_CATEGORIES = [
     "electronics",
     "perfumes",
+    "perfumaria",
     "fashion",
     "beauty",
     "furniture",
@@ -97,14 +98,14 @@ class EntityExtractor:
         for cat in COMMON_CATEGORIES:
             if cat in text:
                 return cat
-        match = re.search(r"category\\s+(\\w+)", text)
+        match = re.search(r"category\s+(\w+)", text)
         if match:
             return match.group(1)
         return None
 
     def _extract_state(self, text: str) -> Optional[str]:
         for st in STATES:
-            if re.search(rf"\\b{st.lower()}\\b", text):
+            if re.search(rf"\b{st.lower()}\b", text):
                 return st
         return None
 
@@ -112,31 +113,31 @@ class EntityExtractor:
         for city in self.known_cities:
             if city in text:
                 return city.title()
-        match = re.search(r"in\\s+([a-zA-Z\\s]+)", text)
+        match = re.search(r"in\s+([a-zA-Z\s]+?)(?:\s+(?:with|rating|for|on|by)\b|$)", text)
         if match:
             return match.group(1).strip().title()
         return None
 
     def _extract_rating(self, text: str) -> Optional[float]:
-        match = re.search(r"rating[s]?\\s*(?:above|>|>=)?\\s*(\\d(?:\\.\\d)?)", text)
+        match = re.search(r"rating[s]?\s*(?:above|>|>=)?\s*(\d(?:\.\d)?)", text)
         if match:
             return float(match.group(1))
         return None
 
     def _extract_reliability(self, text: str) -> Optional[float]:
-        match = re.search(r"(reliability|on[-\\s]?time)\\s*(?:above|>|>=)?\\s*(0\\.\\d+|1\\.0)", text)
+        match = re.search(r"(reliability|on[-\s]?time)\s*(?:above|>|>=)?\s*(0\.\d+|1\.0)", text)
         if match:
             return float(match.group(2))
         return None
 
     def _extract_dates(self, text: str) -> tuple[Optional[str], Optional[str]]:
-        date_range = re.search(r"(20\\d{2}-\\d{2}-\\d{2}).*?(20\\d{2}-\\d{2}-\\d{2})", text)
+        date_range = re.search(r"(20\d{2}-\d{2}-\d{2}).*?(20\d{2}-\d{2}-\d{2})", text)
         if date_range:
             return date_range.group(1), date_range.group(2)
         return None, None
 
     def _extract_name(self, text: str, label: str) -> Optional[str]:
-        match = re.search(rf"{label}\\s+([\\w\\s]+)", text)
+        match = re.search(rf"{label}\s+([\w\s]+)", text)
         if match:
             return match.group(1).strip()
         return None
