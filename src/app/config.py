@@ -1,5 +1,7 @@
 import os
 from dataclasses import dataclass
+from typing import Optional
+
 from dotenv import load_dotenv
 
 
@@ -15,9 +17,9 @@ class Settings:
     vector_index: str = os.getenv("VECTOR_INDEX", "product_feature_index")
     embed_model: str = os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
     embed_property: str = os.getenv("EMBED_PROPERTY", "embedding")
-    openai_api_key: str | None = os.getenv("OPENAI_API_KEY")
-    huggingface_token: str | None = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-    ollama_model: str | None = os.getenv("OLLAMA_MODEL")
+    openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
+    huggingface_token: Optional[str] = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+    ollama_model: Optional[str] = os.getenv("OLLAMA_MODEL")
     persona: str = os.getenv(
         "ASSISTANT_PERSONA",
         "You are an intelligent ecommerce marketplace analyst. "
