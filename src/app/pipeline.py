@@ -20,6 +20,7 @@ class RetrievalResult:
     params: Dict[str, object]
     baseline_rows: List[Dict[str, object]]
     embed_rows: List[Dict[str, object]]
+    embed_model_used: Optional[str] = None
     answer: Optional[str] = None
 
 
@@ -31,7 +32,6 @@ class Pipeline:
         self.settings = get_settings()
         self.intent = IntentClassifier()
         self.entities = EntityExtractor()
-        self.embeddings = EmbeddingService(self.settings)
         self.llm_registry = LLMRegistry(self.settings)
 
     def run(
@@ -39,26 +39,58 @@ class Pipeline:
         question: str,
         retrieval: str = "hybrid",
         model_key: Optional[str] = None,
+        embed_model_key: Optional[str] = None,
         persona: Optional[str] = None,
         task: Optional[str] = None,
     ) -> RetrievalResult:
+        """
+        Run the full RAG pipeline.
+        
+        Args:
+            question: User's question.
+            retrieval: Retrieval strategy: "baseline", "embeddings", or "hybrid".
+            model_key: LLM model key to use.
+            embed_model_key: Embedding model key ("model_1", "model_2", etc.).
+            persona: Optional custom persona override.
+            task: Optional custom task override.
+            
+        Returns:
+            RetrievalResult with retrieved context and LLM answer.
+        """
         intent_result = self.intent.predict(question)
         entities = self.entities.parse(question)
 
         query = build_query(intent_result.intent, entities)
         baseline_rows: List[Dict[str, object]] = []
         embed_rows: List[Dict[str, object]] = []
+        embed_model_used: Optional[str] = None
 
         client = KGClient(self.settings)
         try:
+            # Run baseline Cypher query if needed
             baseline_needed = query and (
                 retrieval in ("baseline", "hybrid")
                 or intent_result.intent in self.BASELINE_REQUIRED_INTENTS
             )
             if baseline_needed:
-                baseline_rows = client.run_query(query["text"], query.get("params"))
+                try:
+                    baseline_rows = client.run_query(query["text"], query.get("params"))
+                except Exception as e:
+                    print(f"Warning: Baseline query failed: {e}")
+                    baseline_rows = []
+            
+            # Run embedding-based retrieval if needed
             if retrieval in ("embeddings", "hybrid"):
-                embed_rows = self.embeddings.semantic_search(client, query=question, top_k=8)
+                try:
+                    # Use specified embedding model or default to model_1
+                    embed_key = embed_model_key or "model_1"
+                    embeddings = EmbeddingService(self.settings, model_key=embed_key)
+                    embed_rows = embeddings.semantic_search(client, query=question, top_k=8)
+                    embed_model_used = embed_key
+                except Exception as e:
+                    print(f"Warning: Embedding search failed: {e}")
+                    embed_rows = []
+                    
         finally:
             client.close()
 
@@ -69,7 +101,7 @@ class Pipeline:
             context_parts.append(f"Embedding hits: {embed_rows}")
         if not context_parts:
             context_parts.append("No results found in graph.")
-        context = "\\n".join(context_parts)
+        context = "\n".join(context_parts)
 
         chosen_model = model_key or next(iter(self.llm_registry.options().keys()), None)
         model = self.llm_registry.get(chosen_model)
@@ -88,6 +120,7 @@ class Pipeline:
             params=query.get("params") if query else {},
             baseline_rows=baseline_rows,
             embed_rows=embed_rows,
+            embed_model_used=embed_model_used,
             answer=answer,
         )
 

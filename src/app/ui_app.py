@@ -20,12 +20,26 @@ pipeline = Pipeline()
 st.title("Graph-RAG Ecommerce Assistant")
 st.markdown(
     "Ground answers on the Neo4j knowledge graph. Switch between baseline Cypher and embeddings, "
-    "and compare models."
+    "compare embedding models, and compare LLMs."
 )
 
 with st.sidebar:
     st.header("Run settings")
     retrieval = st.selectbox("Retrieval strategy", ["hybrid", "baseline", "embeddings"])
+    
+    # Embedding model selector (when embeddings are enabled)
+    embed_model_key = None
+    if retrieval in ("embeddings", "hybrid"):
+        embedding_models = settings.get_embedding_models()
+        embed_options = list(embedding_models.keys())
+        if embed_options:
+            embed_model_key = st.selectbox(
+                "Embedding model",
+                embed_options,
+                format_func=lambda k: embedding_models[k].name,
+                help="Select which embedding model to use for vector search."
+            )
+    
     model_options = list(pipeline.llm_registry.options().keys())
     if not model_options:
         st.error("No LLMs configured. Set OPENAI_API_KEY, OLLAMA_MODEL, or HUGGINGFACEHUB_API_TOKEN.")
@@ -34,10 +48,13 @@ with st.sidebar:
     persona = st.text_area("Persona", settings.persona, height=100)
     task = st.text_area("Task", settings.default_task, height=80)
     st.write("Environment")
-    st.code(
-        f"NEO4J_URI={settings.neo4j_uri}\nDB={settings.neo4j_database}\nVECTOR_INDEX={settings.vector_index}\nEMBED_MODEL={settings.embed_model}",
-        language="bash",
-    )
+    env_text = f"""NEO4J_URI={settings.neo4j_uri}
+DB={settings.neo4j_database}
+VECTOR_INDEX={settings.vector_index}
+EMBED_MODEL={settings.embed_model}"""
+    if settings.embed_model_2:
+        env_text += f"\nVECTOR_INDEX_2={settings.vector_index_2}\nEMBED_MODEL_2={settings.embed_model_2}"
+    st.code(env_text, language="bash")
 
 question = st.text_input("Ask a question", placeholder="e.g., Best perfumes in SP with rating > 4?")
 run = st.button("Run")
@@ -48,6 +65,7 @@ if run and question:
             question=question,
             retrieval=retrieval,
             model_key=model_key,
+            embed_model_key=embed_model_key,
             persona=persona,
             task=task,
         )
@@ -55,18 +73,21 @@ if run and question:
     col1, col2 = st.columns(2)
     with col1:
         st.subheader("Intent & Entities")
-        st.json(
-            {
-                "intent": result.intent,
-                "entities": result.entities.to_params(),
-                "cypher": result.cypher,
-                "params": result.params,
-            }
-        )
+        intent_info = {
+            "intent": result.intent,
+            "entities": result.entities.to_params(),
+            "cypher": result.cypher,
+            "params": result.params,
+        }
+        if result.embed_model_used:
+            intent_info["embedding_model"] = result.embed_model_used
+        st.json(intent_info)
         st.subheader("Baseline Rows")
         st.json(result.baseline_rows or [])
     with col2:
         st.subheader("Embedding Hits")
+        if result.embed_model_used:
+            st.caption(f"Using: {result.embed_model_used}")
         st.json(result.embed_rows or [])
         st.subheader("Answer")
         st.write(result.answer)
@@ -85,4 +106,4 @@ if run and question:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-st.markdown("Tip: switch retrieval/model to compare grounded answers. Inspect raw rows to verify hallucination control.")
+st.markdown("Tip: switch retrieval/embedding/model to compare grounded answers. Inspect raw rows to verify hallucination control.")
