@@ -1,7 +1,7 @@
-# Slide/Report Notes (Yassin)
+# Slide/Report Notes 
 
 ## Architecture
-- Streamlit UI → Pipeline (intent + entity) → Retrieval (baseline Cypher via `kg_client.py`, embedding search via `embedding.py` on Model 1 index) → Prompt (`llm.py`) → LLM (Ollama models) → Answer.
+- Streamlit UI → Pipeline (intent + entity) → Retrieval (baseline Cypher via `kg_client.py`, embedding search via `embedding.py` on Model 1 index) → Prompt (`llm.py`) → LLM (HuggingFace or Ollama) → Answer.
 - Data: Neo4j graph with Product/Order/OrderItem/Customer/Review; vector index on `Product.embedding` (384-d MiniLM).
 
 ## Retrieval examples (show screenshots/logs)
@@ -9,12 +9,13 @@
 - Comparison: baseline vs hybrid for the same question to show added recall; HF vs Ollama answers/latency.
 
 ## Model comparison
-- Three Ollama models: `ollama-llama2`, `ollama-phi3:mini`, `ollama-mistral` (Model 2 embeddings disabled).
+- Two models: HuggingFace endpoint vs Ollama (note: Model 2 embeddings disabled).
 - Record: latency, answer quality, hallucination rate; hybrid vs baseline-only.
 
 ## Error analysis
 - Schema mismatch fixed: queries now use `product_category_name`, `customer_state/city`, `review_score` (no Category/BELONGS_TO).
-- Ollama deprecation resolved with `langchain-ollama`; HF optional.
+- HF auth/init errors fixed by `langchain_huggingface` + correct token param.
+- Ollama deprecation resolved with `langchain-ollama`.
 - Model 2 disabled due to single embedding property in use; avoid hitting missing index.
 
 ## Improvements / limitations
