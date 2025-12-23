@@ -21,7 +21,7 @@ class EmbeddingModelConfig:
 class Settings:
     neo4j_uri: str = os.getenv("NEO4J_URI", "neo4j://localhost:7687")
     neo4j_user: str = os.getenv("NEO4J_USER", "neo4j")
-    neo4j_password: str = os.getenv("NEO4J_PASSWORD", "password")
+    neo4j_password: str = os.getenv("NEO4J_PASSWORD", "19456hiPA.")
     neo4j_database: str = os.getenv("NEO4J_DATABASE", "neo4j")
     
     # Primary embedding model (legacy support)
@@ -30,9 +30,9 @@ class Settings:
     embed_property: str = os.getenv("EMBED_PROPERTY", "embedding")
     
     # Secondary embedding model
-    embed_model_2: Optional[str] = os.getenv("EMBED_MODEL_2", "sentence-transformers/all-mpnet-base-v2")
-    vector_index_2: Optional[str] = os.getenv("VECTOR_INDEX_2", "product_feature_index_2")
-    embed_property_2: Optional[str] = os.getenv("EMBED_PROPERTY_2", "embedding2")
+    embed_model_2: Optional[str] = os.getenv("EMBED_MODEL_2", None) or os.getenv("EMBED_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
+    vector_index_2: Optional[str] = os.getenv("VECTOR_INDEX_2", None) or os.getenv("VECTOR_INDEX", "product_feature_index")
+    embed_property_2: Optional[str] = os.getenv("EMBED_PROPERTY_2", None) or os.getenv("EMBED_PROPERTY", "embedding")
     
     openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
     huggingface_token: Optional[str] = os.getenv("HUGGINGFACEHUB_API_TOKEN")

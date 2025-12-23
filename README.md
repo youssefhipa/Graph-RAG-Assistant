@@ -17,7 +17,7 @@ End-to-end Graph-RAG assistant for the ecommerce/marketplace theme. The system g
 - `src/app/queries.py` — library of 10+ Cypher templates + parameter builder.
 - `src/app/kg_client.py` — Neo4j driver helper to run Cypher & vector queries.
 - `src/app/embedding.py` — embedding helper (SentenceTransformers by default) + Neo4j vector search.
-- `src/app/llm.py` — simple registry for multiple chat models (OpenAI, Ollama, HuggingFace, etc.).
+- `src/app/llm.py` — registry for multiple chat models (OpenAI, Ollama; optional Hugging Face endpoint).
 - `src/app/pipeline.py` — orchestrates: preprocess → retrieve (baseline + embeddings) → prompt → LLM.
 - `src/app/ui_app.py` — Streamlit UI with model/retrieval selectors and transparency panes.
 - `data/sample_import.cypher` — tiny sample KG seed to validate the pipeline.
@@ -33,11 +33,11 @@ NEO4J_DATABASE=neo4j
 VECTOR_INDEX=product_feature_index
 EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2
 OPENAI_API_KEY=...
-HUGGINGFACEHUB_API_TOKEN=...
+HUGGINGFACEHUB_API_TOKEN=...  # leave blank if you don't use Hugging Face
 OLLAMA_MODEL=llama2
 ```
 You can swap embedding/LLM models via the UI dropdowns. The embedding model must match whatever you used to precompute vectors in the KG.
-Set at least one LLM backend (OpenAI, HuggingFace, or Ollama) so the registry is not empty.
+Set at least one LLM backend (OpenAI or Ollama). Hugging Face is optional; leave the token unset if you don't use it.
 
 ## Baseline Cypher library (examples)
 - Product search by category/state/city/rating.
@@ -65,7 +65,7 @@ Queries are templated in `src/app/queries.py`; parameters are filled from extrac
 
 ## LLM layer & comparison
 - Unified prompt structure: **context** (retrieval results) + **persona** (assistant role) + **task** (grounded answer).
-- Registry supports at least three model backends: OpenAI (gpt-3.5/4), HuggingFace Inference, and Ollama/local. Add more in `src/app/llm.py`.
+- Registry supports OpenAI (gpt-3.5/4) and Ollama/local by default. A Hugging Face Inference endpoint is available but optional; leave the token unset to disable it. Add more in `src/app/llm.py`.
 - `pipeline.py` returns raw context + final answer so you can log tokens, latency, and subjective quality. Fill the `MODEL_COMPARISON` table in your report.
 
 ## UI (Streamlit)
@@ -99,12 +99,12 @@ Tests are lightweight and offline.
 - Translation/normalization: non-English fields (e.g., `product_category_name`, city/state names) should be translated/standardized to English before use; the current pipeline assumes data is already pretranslated/normalized.
 
 ## Usage notes
-- Set env in `.env`: `NEO4J_URI=bolt://localhost:7687`, `NEO4J_USER/NEO4J_PASSWORD`, optional `HUGGINGFACEHUB_API_TOKEN` (and `HF_MODEL`). Ollama models are fixed in code (llama2, phi3:mini, mistral); no env needed. Leave Model 2 vars empty.
+- Set env in `.env`: `NEO4J_URI=bolt://localhost:7687`, `NEO4J_USER/NEO4J_PASSWORD`; optionally add `OPENAI_API_KEY`. Ollama models are fixed in code (llama2, phi3:mini, mistral); no env needed. Hugging Face is disabled unless you set `HUGGINGFACEHUB_API_TOKEN`. Leave Model 2 vars empty.
 - Install deps: `pip install -r requirements.txt`. Add `export PYTHONPATH=src` (or `pip install -e .`).
-- Run UI: `streamlit run src/app/ui_app.py`. Choose retrieval (baseline/hybrid/embeddings) and LLM (HuggingFace or Ollama). Hybrid recommended.
+- Run UI: `streamlit run src/app/ui_app.py`. Choose retrieval (baseline/hybrid/embeddings) and LLM (OpenAI or Ollama; Hugging Face only appears if you set its token). Hybrid recommended.
 - If schema differs, align `src/app/queries.py` to your labels/properties.
 
-## Manual test script (run baseline vs hybrid; HF vs Ollama)
+## Manual test script (run baseline vs hybrid; OpenAI vs Ollama)
 - product_search: “Top electronics in SP with rating >4?”
 - delivery_delay: “Which orders in RJ are late this month?”
 - review_sentiment: “Reviews for electronics in sao paulo?”
