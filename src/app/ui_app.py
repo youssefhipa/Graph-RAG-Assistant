@@ -126,7 +126,7 @@ if st.session_state.get("runs"):
     tabs = st.tabs(
         [f"{run['retrieval']} | {run['model']}" for run in st.session_state["runs"]]
     )
-    for tab, run_info in zip(tabs, st.session_state["runs"]):
+    for idx, (tab, run_info) in enumerate(zip(tabs, st.session_state["runs"])):
         with tab:
             st.subheader("Run stats")
             st.write(
@@ -178,7 +178,7 @@ if st.session_state.get("runs"):
                         )
                     ]
                 )
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, width="stretch", key=f"plot-{idx}")
             else:
                 st.caption("No baseline rows to visualize.")
 

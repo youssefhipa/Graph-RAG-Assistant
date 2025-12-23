@@ -1,7 +1,7 @@
 # Project Report — Graph-RAG Ecommerce Assistant
 
 ## Status
-- Current configuration runs with Model 1 embeddings (MiniLM) and three fixed Ollama models (`ollama-llama2`, `ollama-phi3:mini`, `ollama-mistral`). Model 2 is disabled by leaving `EMBED_MODEL_2`/`VECTOR_INDEX_2` empty. HuggingFace is optional but not required.
+- Current configuration runs with Model 1 embeddings (MiniLM) and three fixed Ollama models (`ollama-llama2`, `ollama-phi3:mini`, `ollama-mistral`). Model 2 can be enabled by setting `EMBED_MODEL_2`/`EMBED_PROPERTY_2`/`VECTOR_INDEX_2` (embedding2 + product_feature_index_2). HuggingFace is optional.
 - Neo4j schema aligned: `Product`, `Order`, `OrderItem`, `Customer`, `Review` with relationships `REFERS_TO`, `CONTAINS`, `PLACED`, `REVIEWS`. Queries use properties `product_category_name`, `price`, `customer_state`, `customer_city`, `review_score`.
 - Vector index in use: `product_feature_index` on `Product.embedding` (384 dims).
 
@@ -21,6 +21,15 @@
 ## LLMs
 - Ollama via `langchain-ollama` with three fixed models: `ollama-llama2`, `ollama-phi3:mini`, `ollama-mistral` (ensure pulled).
 - HuggingFace endpoint supported but optional.
+
+## Compliance with milestone requirements
+- Input preprocessing: intent classifier + entity extractor for ecommerce entities; optional translation/normalization assumed.
+- Baseline retrieval: 10+ Cypher templates in `queries.py`, parameterized with extracted entities.
+- Embeddings: Model 1 active; Model 2 available via `embedding2` + `product_feature_index_2` for comparison.
+- LLM layer: three LLMs (Ollama models) selectable in UI; prompt structured as context/persona/task.
+- UI: shows raw baseline rows, embedding hits, Cypher context, and final answer; model/retrieval selectors; graph preview.
+- Experiments: supports baseline vs embeddings vs hybrid; LLM comparison via model dropdown.
+- Reports/slides: architecture, retrieval examples, model comparison, error analysis, improvements/limitations captured.
 
 ## Data & indexes
 - Embeddings stored at `Product.embedding`. Rebuild index if reloading data:
