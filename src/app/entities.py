@@ -60,7 +60,9 @@ class EntityResult:
     seller: Optional[str] = None
 
     def to_params(self) -> Dict[str, object]:
-        return {k: v for k, v in self.__dict__.items() if v is not None}
+        # Return all parameters (including None) so Cypher queries with optional params
+        # always receive bound variables and don't error with ParameterMissing.
+        return dict(self.__dict__)
 
 
 class EntityExtractor:

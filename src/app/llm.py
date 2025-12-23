@@ -7,19 +7,20 @@ from typing import Callable, Dict, Optional, TYPE_CHECKING
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage
+from langchain_huggingface import ChatHuggingFace, HuggingFaceEndpoint
 
 from .config import Settings
 
 if TYPE_CHECKING:
     from langchain_openai import ChatOpenAI
-    from langchain_community.chat_models import ChatOllama, ChatHuggingFace
-    from langchain_community.llms import HuggingFaceEndpoint
+    from langchain_ollama import ChatOllama
 
 
 @dataclass
 class LLMConfig:
     name: str
     constructor: Callable[[], BaseChatModel]
+    max_context_tokens: int = 30000  # Safe default
 
 
 class LLMRegistry:
@@ -52,36 +53,44 @@ class LLMRegistry:
             self._registry["openai-gpt4"] = LLMConfig(
                 name="openai-gpt4",
                 constructor=_make_openai_gpt4,
+                max_context_tokens=120000,
             )
             self._registry["openai-gpt35"] = LLMConfig(
                 name="openai-gpt35",
                 constructor=_make_openai_gpt35,
+                max_context_tokens=15000,
             )
-        if self.settings.ollama_model:
-            def _make_ollama():
-                from langchain_community.chat_models import ChatOllama
-                return ChatOllama(model=self.settings.ollama_model, temperature=0.2)
-            self._registry["ollama"] = LLMConfig(
-                name=f"ollama-{self.settings.ollama_model}",
+        # Fixed set of Ollama models (edit here if you want different tags)
+        ollama_models = ["llama2", "phi3:mini", "mistral"]
+        for model_name in ollama_models:
+            def _make_ollama(model=model_name):
+                from langchain_ollama import ChatOllama
+                return ChatOllama(model=model, temperature=0.2)
+            self._registry[f"ollama-{model_name}"] = LLMConfig(
+                name=f"ollama-{model_name}",
                 constructor=_make_ollama,
+                max_context_tokens=4000,
             )
         if self.settings.huggingface_token:
             def _make_huggingface():
-                from langchain_community.llms import HuggingFaceEndpoint
-                from langchain_community.chat_models import ChatHuggingFace
                 return ChatHuggingFace(
                     llm=HuggingFaceEndpoint(
-                        huggingfacehub_api_token=self.settings.huggingface_token,
                         repo_id=os.getenv("HF_MODEL", "HuggingFaceH4/zephyr-7b-alpha"),
+                        huggingfacehub_api_token=self.settings.huggingface_token,
                         temperature=0.2,
+                        max_new_tokens=256,  # Reduced to leave more room for context
                         task="text-generation",
+                        model_kwargs={
+                            "max_length": 32000,  # Hard limit
+                        }
                     )
                 )
             self._registry["huggingface"] = LLMConfig(
                 name="huggingface-endpoint",
                 constructor=_make_huggingface,
+                max_context_tokens=25000,  # Conservative limit for 32K models
             )
-
+            
     def options(self) -> Dict[str, LLMConfig]:
         return self._registry
 
@@ -93,19 +102,41 @@ class LLMRegistry:
         if key not in self._registry:
             raise KeyError(f"Model '{key}' not registered")
         return self._registry[key].constructor()
+    
+    def get_config(self, key: str) -> LLMConfig:
+        if key not in self._registry:
+            raise KeyError(f"Model '{key}' not registered")
+        return self._registry[key]
+
+
+def truncate_context(context: str, max_tokens: int = 20000) -> str:
+    """
+    Truncate context to approximate token limit.
+    Rough estimate: 1 token ≈ 4 characters for English text.
+    """
+    max_chars = max_tokens * 4
+    if len(context) <= max_chars:
+        return context
+    
+    # Truncate and add indicator
+    truncated = context[:max_chars]
+    # Try to cut at a sentence boundary
+    last_period = truncated.rfind('.')
+    if last_period > max_chars * 0.8:  # If we can find a period in the last 20%
+        truncated = truncated[:last_period + 1]
+    
+    return truncated + "\n\n[Context truncated due to length...]"
 
 
 def build_prompt(context: str, persona: str, task: str, question: str) -> ChatPromptTemplate:
-    template = """
-    You are {persona}.
-    Task: {task}
+    template = """You are {persona}.
+Task: {task}
 
-    Context:
-    {context}
+Context:
+{context}
 
-    User question: {question}
-    Answer using only the context. If insufficient, say you cannot find the answer.
-    """
+User question: {question}
+Answer using only the context. If insufficient, say you cannot find the answer."""
     return ChatPromptTemplate.from_template(template)
 
 
@@ -115,10 +146,22 @@ def run_llm(
     persona: str,
     task: str,
     question: str,
+    max_context_tokens: int = 20000,  # Very conservative default
 ) -> str:
-    prompt = build_prompt(context=context, persona=persona, task=task, question=question)
-    chain = prompt | model
-    result: AIMessage = chain.invoke(
-        {"context": context, "persona": persona, "task": task, "question": question}
+    # ALWAYS truncate context to prevent token limit errors
+    truncated_context = truncate_context(context, max_context_tokens)
+    
+    prompt = build_prompt(
+        context=truncated_context, 
+        persona=persona, 
+        task=task, 
+        question=question
     )
+    chain = prompt | model
+    result: AIMessage = chain.invoke({
+        "context": truncated_context, 
+        "persona": persona, 
+        "task": task, 
+        "question": question
+    })
     return result.content

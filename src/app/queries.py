@@ -14,15 +14,20 @@ QUERY_LIBRARY: Dict[str, str] = {
     RETURN count(s) AS seller_count
     """,
     "product_search": """
-    MATCH (p:Product)-[:BELONGS_TO]->(c:Category)
-    OPTIONAL MATCH (p)<-[:SELLS]-(s:Seller)
-    WHERE ($category IS NULL OR c.name CONTAINS $category)
-      AND ($state IS NULL OR s.state = $state OR p.state = $state)
-      AND ($city IS NULL OR s.city IS NOT NULL AND toLower(s.city) CONTAINS toLower($city))
-      AND ($min_rating IS NULL OR p.avg_rating IS NOT NULL AND p.avg_rating >= $min_rating)
-    RETURN p.id AS id, p.name AS name, p.category AS category, p.price AS price,
-           p.avg_rating AS rating, s.name AS seller, s.state AS seller_state
-    ORDER BY rating DESC
+    MATCH (p:Product)
+    OPTIONAL MATCH (oi:OrderItem)-[:REFERS_TO]->(p)
+    OPTIONAL MATCH (o:Order)-[:CONTAINS]->(oi)
+    OPTIONAL MATCH (o)<-[:PLACED]-(c:Customer)
+    OPTIONAL MATCH (r:Review)-[:REFERS_TO]->(o)
+    WITH p, c,
+         avg(r.review_score) AS rating
+    WHERE ($category IS NULL OR p.product_category_name CONTAINS $category OR p.category CONTAINS $category)
+      AND ($state IS NULL OR c.customer_state = $state)
+      AND ($city IS NULL OR c.customer_city IS NOT NULL AND toLower(c.customer_city) CONTAINS toLower($city))
+      AND ($min_rating IS NULL OR rating IS NOT NULL AND rating >= $min_rating)
+    RETURN p.product_id AS id, coalesce(p.name, p.product_id) AS name, p.product_category_name AS category,
+           p.price AS price, rating AS rating, c.customer_state AS customer_state, c.customer_city AS customer_city
+    ORDER BY (rating IS NULL) ASC, rating DESC, price ASC
     LIMIT 15
     """,
     "delivery_delay": """

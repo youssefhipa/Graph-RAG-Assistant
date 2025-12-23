@@ -86,6 +86,33 @@ pytest -q
 ```
 Tests are lightweight and offline.
 
-## Notes
-- The code is offline-friendly but expects a running Neo4j DB with your Milestone 2 graph.
-- For non-English attributes, normalize/translate before import (see preprocessing hooks in `pipeline.py`).
+## Data & embeddings
+- Neo4j schema assumed: `Product`, `Order`, `OrderItem`, `Customer`, `Review` with relationships `REFERS_TO`, `CONTAINS`, `PLACED`, `REVIEWS`. Queries use properties like `product_category_name`, `price`, `customer_state`, `customer_city`, `review_score`.
+- Embeddings: Model 1 only (MiniLM). Keep `.env` with `EMBED_MODEL=sentence-transformers/all-MiniLM-L6-v2`, `EMBED_PROPERTY=embedding`, `VECTOR_INDEX=product_feature_index` (384 dims). Model 2 is disabled by leaving `EMBED_MODEL_2`/`VECTOR_INDEX_2` blank.
+- To rebuild embeddings: run `python run.py` to write vectors to `Product.embedding`; then create the index:
+  ```cypher
+  CREATE VECTOR INDEX product_feature_index IF NOT EXISTS
+  FOR (p:Product) ON (p.embedding)
+  OPTIONS {indexConfig: {`vector.dimensions`: 384, `vector.similarity_function`: "cosine"}};
+  ```
+- Data hygiene: trim/lowercase category/city/state, cast numerics, standardize dates (ISO). Regenerate embeddings after normalization.
+- Translation/normalization: non-English fields (e.g., `product_category_name`, city/state names) should be translated/standardized to English before use; the current pipeline assumes data is already pretranslated/normalized.
+
+## Usage notes
+- Set env in `.env`: `NEO4J_URI=bolt://localhost:7687`, `NEO4J_USER/NEO4J_PASSWORD`, optional `HUGGINGFACEHUB_API_TOKEN` (and `HF_MODEL`). Ollama models are fixed in code (llama2, phi3:mini, mistral); no env needed. Leave Model 2 vars empty.
+- Install deps: `pip install -r requirements.txt`. Add `export PYTHONPATH=src` (or `pip install -e .`).
+- Run UI: `streamlit run src/app/ui_app.py`. Choose retrieval (baseline/hybrid/embeddings) and LLM (HuggingFace or Ollama). Hybrid recommended.
+- If schema differs, align `src/app/queries.py` to your labels/properties.
+
+## Manual test script (run baseline vs hybrid; HF vs Ollama)
+- product_search: “Top electronics in SP with rating >4?”
+- delivery_delay: “Which orders in RJ are late this month?”
+- review_sentiment: “Reviews for electronics in sao paulo?”
+- seller_performance: “Best sellers in SP by reliability >0.8?”
+- state_trend: “Which state has most orders?”
+- category_insight: “Most popular product categories?”
+- recommendation: “Recommend perfumes in RJ rating >4.”
+- customer_behavior: “Customers with repeat orders?”
+- seller_count: “How many sellers are there?”
+- faq/unknown: “What is the return policy?” (expect graceful no-data)
+Record model, retrieval, latency, baseline rows count, embedding hits count, and whether the answer is grounded in returned context.

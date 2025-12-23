@@ -14,6 +14,7 @@ class EmbeddingModelConfig:
     name: str
     model_id: str
     vector_index: str
+    embed_property: str
 
 
 @dataclass
@@ -31,6 +32,7 @@ class Settings:
     # Secondary embedding model
     embed_model_2: Optional[str] = os.getenv("EMBED_MODEL_2", "sentence-transformers/all-mpnet-base-v2")
     vector_index_2: Optional[str] = os.getenv("VECTOR_INDEX_2", "product_feature_index_2")
+    embed_property_2: Optional[str] = os.getenv("EMBED_PROPERTY_2", "embedding2")
     
     openai_api_key: Optional[str] = os.getenv("OPENAI_API_KEY")
     huggingface_token: Optional[str] = os.getenv("HUGGINGFACEHUB_API_TOKEN")
@@ -53,6 +55,7 @@ class Settings:
                 name="Model 1 (Primary)",
                 model_id=self.embed_model,
                 vector_index=self.vector_index,
+                embed_property=self.embed_property,
             )
         }
         if self.embed_model_2:
@@ -60,6 +63,7 @@ class Settings:
                 name="Model 2 (Secondary)",
                 model_id=self.embed_model_2,
                 vector_index=self.vector_index_2 or self.vector_index,
+                embed_property=self.embed_property_2 or self.embed_property,
             )
         return models
 

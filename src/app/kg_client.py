@@ -30,6 +30,7 @@ class KGClient:
         vector: List[float],
         top_k: int = 10,
         index_name: str | None = None,
+        embed_property: str | None = None,
     ) -> List[Dict[str, Any]]:
         """
         Query a Neo4j vector index with validation.
@@ -38,6 +39,7 @@ class KGClient:
             vector: The embedding vector to search with.
             top_k: Number of top results to return.
             index_name: Name of the vector index. Uses settings.vector_index if not provided.
+            embed_property: Node property to null out in the return (avoids sending big vectors back).
             
         Returns:
             List of matching records with similarity scores.
@@ -53,6 +55,7 @@ class KGClient:
             raise ValueError("top_k must be at least 1")
         
         index_name = index_name or self.settings.vector_index
+        embed_property = embed_property or self.settings.embed_property
         
         # Validate index name (basic sanity check)
         if not index_name or not isinstance(index_name, str):
@@ -65,7 +68,7 @@ class KGClient:
                 $top_k,
                 $vector
             ) YIELD node, score
-            RETURN node{{.*, `{self.settings.embed_property}`: null}} AS item, score
+            RETURN node{{.*, `{embed_property}`: null}} AS item, score
             ORDER BY score DESC
             """
             with self.driver.session(database=self.settings.neo4j_database) as session:

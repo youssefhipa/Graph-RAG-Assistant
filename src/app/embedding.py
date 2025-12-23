@@ -43,6 +43,7 @@ class EmbeddingService:
                 vector=vector,
                 top_k=top_k,
                 index_name=self.model_config.vector_index,
+                embed_property=self.model_config.embed_property,
             )
         except Exception as e:
             # Return empty list if vector search fails
