@@ -37,6 +37,7 @@ STATES = [
 
 COMMON_CATEGORIES = [
     "electronics",
+    "eletronicos",
     "perfumes",
     "perfumaria",
     "fashion",
@@ -45,6 +46,11 @@ COMMON_CATEGORIES = [
     "sports",
     "toys",
 ]
+
+CATEGORY_ALIASES = {
+    "electronics": "eletronicos",
+    "perfumes": "perfumaria",
+}
 
 
 @dataclass
@@ -99,10 +105,11 @@ class EntityExtractor:
     def _extract_category(self, text: str) -> Optional[str]:
         for cat in COMMON_CATEGORIES:
             if cat in text:
-                return cat
+                return CATEGORY_ALIASES.get(cat, cat)
         match = re.search(r"category\s+(\w+)", text)
         if match:
-            return match.group(1)
+            raw = match.group(1)
+            return CATEGORY_ALIASES.get(raw, raw)
         return None
 
     def _extract_state(self, text: str) -> Optional[str]:
@@ -117,7 +124,14 @@ class EntityExtractor:
                 return city.title()
         match = re.search(r"in\s+([a-zA-Z\s]+?)(?:\s+(?:with|rating|for|on|by)\b|$)", text)
         if match:
-            return match.group(1).strip().title()
+            candidate = match.group(1).strip()
+            if "category" in candidate:
+                return None
+            if any(cat in candidate for cat in COMMON_CATEGORIES):
+                return None
+            if candidate.upper() in STATES:
+                return None
+            return candidate.title()
         return None
 
     def _extract_rating(self, text: str) -> Optional[float]:
